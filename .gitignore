@@ -172,4 +172,4 @@ cython_debug/
 .pypirc
 
 # logs
-logs/agent_log.txt
+#logs/agent_log.txt
