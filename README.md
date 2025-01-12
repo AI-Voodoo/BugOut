@@ -1,6 +1,11 @@
 # BugOut: Your AI-Powered Pythonic Coding Agent 🐞💻
 
-BugOut is a Python-powered coding agent designed to streamline the python code development process. It uses an advanced coding LLM to generate, execute, debug, and iteratively refine code until it works without error. 
+**BugOut** is a Python-powered coding agent designed to show how you can build a coding agent like this from scratch. It uses DeepSeek lite to generate code and the simple agent framework to execute, debug, and iteratively refine code until it works without error. 
+
+- Start the API
+- Populate your prompt in app.py
+- I plan to add much better CoT and other agent processes…this is just some fun I thought could be helpful for some trying to understand how to build coding agents from scratch.
+
 
 **BugOut is a very early PoC which I created on a Sunday afternoon: so it is what it is...**
 
