@@ -12,16 +12,16 @@ BugOut is a Python-powered coding agent designed to streamline the python code d
 ### Agent Task:
 ```
 "Write a program in Python to open the file located at input/test.txt parse out the sentence which conatains the phrase \"nearly 9,000\" and save a new file with the sentence to output/ folder. Both folders are in the application root where this code is running. Lastly, define a test which should be executed at the end to ensure the task was coded properly."
-```
+\```
 
 ### Agent Output
-```
+\```
 Raw Response:
  Sure, let's write the Python program to accomplish the task. We'll use Python's built-in file handling capabilities to read the file, search for the specific phrase, and write the matching sentence to a new file. Finally, we'll include a test to ensure the program works as expected.
 
 Here's the Python code:
 
-```python
+\```python
 import os
 
 def extract_sentence(input_file_path, output_file_path):
@@ -63,7 +63,7 @@ def test_extract_sentence():
 
 # Run the test
 test_extract_sentence()
-```
+\```
 
 This code defines a function `extract_sentence` that reads the input file, searches for the phrase "nearly 9,000", and writes the matching sentence to the output file. The `test_extract_sentence` function ensures that the program works correctly by writing a test sentence to the input file, calling `extract_sentence`, and then verifying that the output file contains the expected sentence.
 
@@ -125,7 +125,7 @@ Raw Response:
 
 Here's the corrected Python code:
 
-\`\`\`python
+\```python
 import os
 
 def extract_sentence(input_file_path, output_file_path):
@@ -167,7 +167,7 @@ def test_extract_sentence():
 
 # Run the test
 test_extract_sentence()
-```pyhton
+\```pyhton
 
 This code will now correctly check for the sentence that includes the phrase "nearly 9,000" and write it to the output file. The test will pass if the output file contains the expected sentence.
 
