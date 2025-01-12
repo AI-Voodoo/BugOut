@@ -12,10 +12,10 @@ BugOut is a Python-powered coding agent designed to streamline the python code d
 ### Agent Task:
 ```
 "Write a program in Python to open the file located at input/test.txt parse out the sentence which conatains the phrase \"nearly 9,000\" and save a new file with the sentence to output/ folder. Both folders are in the application root where this code is running. Lastly, define a test which should be executed at the end to ensure the task was coded properly."
-\```
+```
 
 ### Agent Output
-\```
+```
 Raw Response:
  Sure, let's write the Python program to accomplish the task. We'll use Python's built-in file handling capabilities to read the file, search for the specific phrase, and write the matching sentence to a new file. Finally, we'll include a test to ensure the program works as expected.
 
