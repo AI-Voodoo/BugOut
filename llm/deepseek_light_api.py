@@ -49,7 +49,7 @@ def generate():
         # Generate response
         outputs = model.generate(
             inputs,
-            max_new_tokens=2048,
+            max_new_tokens=8192,
             do_sample=False,
             top_k=50,
             top_p=0.95,
