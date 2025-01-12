@@ -83,27 +83,23 @@ class BugOutAgent:
     def run_code(self, code):
         """Executes code and returns success plus either local_env or error string."""
         try:
-            local_env = {}
-            global_env = {}
-            exec(code, global_env, local_env)
+            global_env = {"__builtins__": __builtins__}  # Initialize global scope
+            exec(code, global_env, global_env)
 
             # Log and inspect the environment
             print(colored(f"\n\nGood Code Execution!", "green"))
             print(f"Global Environment: {global_env.keys()}")
-            print(f"Local Environment: {local_env.keys()}")
 
             with open(self.log_file, "a", encoding="utf-8") as f:
                 f.write(f"\n\nGood Code Execution!")
                 f.write(f"\nGlobal Environment: {list(global_env.keys())}")
-                f.write(f"\nLocal Environment: {list(local_env.keys())}")
-            return True, local_env
+            return True, global_env
         except Exception as e:
             # Log the error
             print(colored(f"\n\nError Encountered:\n{str(e)}", "red"))
             with open(self.log_file, "a", encoding="utf-8") as f:
                 f.write(f"\n\nError Encountered:\n{str(e)}")
                 f.write(f"\nGlobal Environment: {list(global_env.keys())}")
-                f.write(f"\nLocal Environment: {list(local_env.keys())}")
             return False, str(e)
 
     
@@ -121,7 +117,11 @@ class BugOutAgent:
 
             if success:
                 # Stop looping and return if the code executes successfully
-                print(colored(f"Code ran successfully. Refinement complete.", "green"))
+                print(colored(f"\n\nCode ran successfully. Refinement complete.", "green"))
+                #print(colored(f"Code Result:\n{result}", "green"))
+
+                #with open(self.log_file, "a", encoding="utf-8") as f:
+                    #f.write(f"\n\nCode Result:\n{result}")
                 return code, result
             else:
                 # Append feedback only on failure
