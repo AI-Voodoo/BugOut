@@ -18,7 +18,7 @@ if __name__ == "__main__":
     agent = BugOutAgent("http://127.0.0.1:5000/generate", log_file)
 
     user_query = """
-Write a Python script that performs a local Windows security audit without making any external network requests. Specifically:
+Write a Python script that performs a local Windows security audit **without needing Admnistrator Privs** and without making any external network requests. Specifically:
 
 Process Enumeration: List every running process. For each process, try to retrieve its:
 
@@ -57,6 +57,8 @@ Do not include any extra commentary inside the triple backticks—just the code.
     - The only non-standard pyhton library dependency you can use is pywin32. 
     - **DO NOT** import any non-standard pyhton dependencies besides pywin32.
     - You are **NOT ALLOWED** to `pip install` any additional dependencies. 
+    - Program should security audit **without needing Admnistrator Privs**
+    - Write unit tests to validate most or all infomation was captured. 
 """
     final_code, result = agent.generate_and_refine(user_query)
     
