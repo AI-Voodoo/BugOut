@@ -1,8 +1,10 @@
-from flask import Flask, request, jsonify
-from transformers import AutoTokenizer, AutoModelForCausalLM
+# deepseek_lite_api.py
+from flask import Flask, request, Response, stream_with_context, jsonify
+from transformers import AutoTokenizer, AutoModelForCausalLM, TextIteratorStreamer
 import torch
+import threading
 
-# Initialize the tokenizer and model
+# Initialize tokenizer + model as before
 tokenizer = AutoTokenizer.from_pretrained(
     "deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct",
     trust_remote_code=True
@@ -13,62 +15,65 @@ model = AutoModelForCausalLM.from_pretrained(
     torch_dtype=torch.bfloat16
 ).cuda()
 
-# Initialize Flask app
 app = Flask(__name__)
 
 @app.route('/generate', methods=['POST'])
 def generate():
     """
-    Generate a response based on user-provided messages.
-    Request JSON format:
-    {
-        "messages": [
-            { "role": "user", "content": "Your prompt here." }
-        ]
-    }
-    Response JSON format:
-    {
-        "response": "Generated response here."
-    }
+    Returns a chunked stream of tokens from the model.
+    Each chunk is a bit of text that the model generates.
+    The agent/client can read these chunks in real time.
     """
     try:
-        # Parse the request
         data = request.get_json()
         if "messages" not in data or not isinstance(data["messages"], list):
             return jsonify({"error": "Invalid input format. 'messages' must be a list."}), 400
         
         messages = data["messages"]
-        
-        # Prepare the inputs
+
+        # Prepare the model inputs
         inputs = tokenizer.apply_chat_template(
             messages,
             add_generation_prompt=True,
             return_tensors="pt"
         ).to(model.device)
-        
-        # Generate response
-        outputs = model.generate(
-            inputs,
+
+        # Create the streamer
+        streamer = TextIteratorStreamer(
+            tokenizer=tokenizer,
+            skip_prompt=True,
+            skip_special_tokens=True
+        )
+
+        # Our generation kwargs
+        generation_kwargs = dict(
+            inputs=inputs,
             max_new_tokens=8192,
-            do_sample=False,
+            do_sample=True,
             top_k=50,
             top_p=0.95,
             num_return_sequences=1,
-            eos_token_id=tokenizer.eos_token_id
+            eos_token_id=tokenizer.eos_token_id,
+            streamer=streamer
         )
-        
-        # Decode and return the generated text
-        generated_text = tokenizer.decode(
-            outputs[0][len(inputs[0]):],
-            skip_special_tokens=True
-        )
-        return jsonify({"response": generated_text})
-    
+
+        # We'll generate in a separate thread
+        generation_thread = threading.Thread(target=model.generate, kwargs=generation_kwargs)
+        generation_thread.start()
+
+        def token_stream():
+            # As tokens appear in the streamer, yield them to the client
+            for new_token in streamer:
+                # You can encode each token as needed; here we just yield raw text
+                yield new_token
+            # Make sure generation is done
+            generation_thread.join()
+
+        # Return a streaming response so the client sees tokens in real time
+        return Response(stream_with_context(token_stream()), mimetype="text/plain")
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
-
-### curl to test
-# curl -X POST http://127.0.0.1:5000/generate -H "Content-Type: application/json" -d "{\"messages\":[{\"role\":\"user\",\"content\":\"write a quick sort algorithm in python.\"}]}"

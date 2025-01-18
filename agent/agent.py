@@ -1,135 +1,181 @@
 import requests
 import json
 import re
+import os
+import tempfile
+import subprocess
+import sys
 from termcolor import colored
-
-system = f"""
-You are BugOut, an AI coding assistant.
-You will explain your reasoning and produce Python code that solves the user's problem.
-You will identify all code sections by using ```python\n[the code you generate]\n````
-Do **not** add any additional comments int the ```python\n[the code you generate]\n````
-If errors occur, you refine the code.
-"""
+from agent.prompts import SYSTEM_PROMPT
 
 class BugOutAgent:
     def __init__(self, llm_url, log_file):
         self.llm_url = llm_url
         self.conversation = []
-        self.chain_of_thought = []
         self.max_iterations = 500
         self.log_file = log_file
         
         # Initial system message: instruct the LLM about its role.
         system_msg = {
             "role": "system",
-            "content": system
+            "content": SYSTEM_PROMPT
         }
         self.conversation.append(system_msg)
 
     def add_message(self, role, input):
-        msg = {
+        return {
             "role": role,
             "content": input
-            }
-        return msg
-    
-    def call_llm(self):
-        """Sends conversation to the LLM API and returns the generated code or message."""
-        headers = {"Content-Type": "application/json"}
+        }
 
+    def call_llm(self):
+        """
+        Sends conversation to the LLM API and reads
+        the response in streaming chunks.
+        """
+        headers = {"Content-Type": "application/json"}
         code_marker = "```python"
-        response = ""
-        
-        while code_marker not in response:
+        final_text = ""
+
+        while code_marker not in final_text:
             data = {"messages": self.conversation}
 
-            #logging 
+            # Logging
             with open(self.log_file, "a", encoding="utf-8") as f:
                 f.write(f"\n\nConversation:\n{self.conversation}")
 
-            # Send the request to the LLM API
+            # Use stream=True for chunked response
             try:
-                response_json = requests.post(self.llm_url, headers=headers, data=json.dumps(data)).json()
-                response = response_json.get("response", "")
+                with requests.post(self.llm_url, headers=headers, data=json.dumps(data), stream=True) as r:
+                    r.raise_for_status()
+                    # Read the chunks as they arrive
+                    chunk_texts = []
+                    for chunk in r.iter_content(chunk_size=None):
+                        # Decode chunk
+                        token_str = chunk.decode("utf-8")
+                        # Print partial tokens to console
+                        print(colored(token_str, "yellow"), end="", flush=True)
+                        chunk_texts.append(token_str)
 
-                msg = self.add_message("assistant", response)
+                    final_text = "".join(chunk_texts)
+
+                # Now we have the full text for this iteration
+                msg = self.add_message("assistant", final_text)
                 self.conversation.append(msg)
-                print(colored(f"\n\nRaw Response:\n{response}", "magenta"))
 
-                #logging 
+                # Log the raw response
                 with open(self.log_file, "a", encoding="utf-8") as f:
-                    f.write(f"\n\nLLM RAW Response:\n{response}")
+                    f.write(f"\n\nLLM RAW Response:\n{final_text}")
 
             except Exception as e:
                 print(colored(f"\n\nError during LLM API call:\n{str(e)}", "red"))
                 return None, None
 
-            # Attempt to extract Python code using regex
-            code_match = re.search(r'```python(.*?)```', response, re.DOTALL)
+            # Extract Python code if present
+            code_match = re.search(r'```python(.*?)```', final_text, re.DOTALL)
             if code_match:
                 code = code_match.group(1).strip()
-                print(colored(f"\n\nGenerated Code:\n{code}", "cyan"))
-
-                #logging 
                 with open(self.log_file, "a", encoding="utf-8") as f:
                     f.write(f"\n\nCode Generated:\n{code}")
-                return response, code
+                return final_text, code
 
-            # If no valid code found, modify the LLM input to remind it to enclose the code
-            reminder_msg = f"You forgot to properly enclose your code with {code_marker}.\nPlease resend the response with proper python code enclosures."
-            msg = self.add_message("user", reminder_msg)
-            self.conversation.append(msg)
+            # If no code found, ask again
+            reminder_msg = (
+                f"You forgot to properly enclose your code with {code_marker}.\n"
+                "Please resend the response with proper Python code enclosures."
+            )
+            self.conversation.append(self.add_message("user", reminder_msg))
+
+        return final_text, None
     
     def run_code(self, code):
-        """Executes code and returns success plus either local_env or error string."""
+        """Executes code in a subprocess and returns (success, result)."""
+        # Create a temp .py file to run
+        with tempfile.NamedTemporaryFile(mode='w', suffix=".py", delete=False) as tmp_file:
+            script_path = tmp_file.name
+            tmp_file.write(code)
+
         try:
-            global_env = {"__builtins__": __builtins__}  # Initialize global scope
-            exec(code, global_env, global_env)
+            # Run the code in a new Python subprocess
+            proc = subprocess.Popen(
+                [sys.executable, script_path],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            stdout, stderr = proc.communicate()
+            return_code = proc.returncode
 
-            # Log and inspect the environment
-            print(colored(f"\n\nGood Code Execution!", "green"))
-            print(f"Global Environment: {global_env.keys()}")
-
+            # Logging
             with open(self.log_file, "a", encoding="utf-8") as f:
-                f.write(f"\n\nGood Code Execution!")
-                f.write(f"\nGlobal Environment: {list(global_env.keys())}")
-            return True, global_env
+                f.write(f"\n\n=== Subprocess Execution ===\n")
+                f.write(f"Script: {script_path}\n")
+                f.write(f"Return code: {return_code}\n")
+                f.write(f"STDOUT:\n{stdout}\n")
+                f.write(f"STDERR:\n{stderr}\n")
+
+            # Print to console as well
+            if return_code == 0:
+                print(colored("\n\nGood Code Execution (no Python error)!", "green"))
+                print("STDOUT:", stdout)
+            else:
+                print(colored("\n\nError Encountered (subprocess non-zero exit)!", "red"))
+                print("STDERR:", stderr)
+
+            # Remove the temp file
+            os.remove(script_path)
+
+            # Decide success/failure
+            if return_code != 0:
+                # Non-zero exit => fail
+                return False, f"Script exited with code {return_code}\n\nSTDERR:\n{stderr}"
+
+            # (Optional) Add any further checks here
+            # e.g., "Did the code produce a certain file?" 
+            # If not, raise an error. For example:
+            # 
+            # if not os.path.exists("local_audit_report.json"):
+            #     return False, "No local_audit_report.json file was created."
+
+            # Return True with collected logs
+            return True, stdout
+
         except Exception as e:
-            # Log the error
+            # If we had a bigger-level error
             print(colored(f"\n\nError Encountered:\n{str(e)}", "red"))
             with open(self.log_file, "a", encoding="utf-8") as f:
-                f.write(f"\n\nError Encountered:\n{str(e)}")
-                f.write(f"\nGlobal Environment: {list(global_env.keys())}")
+                f.write(f"\n\nError Encountered:\n{str(e)}\n")
             return False, str(e)
+        finally:
+            # Cleanup in case something went wrong
+            if os.path.exists(script_path):
+                os.remove(script_path)
 
-    
     def generate_and_refine(self, user_request):
         """Main refinement loop."""
         self.conversation.append({"role": "user", "content": user_request})
 
         for iteration in range(self.max_iterations):
-            # Step 1: Generate code
-            response, code = self.call_llm()
-            self.chain_of_thought.append(response)
+            # 1. Generate code
+            _, code = self.call_llm()
 
-            # Step 2: Execute the code
+            # 2. Execute the code
             success, result = self.run_code(code)
 
             if success:
-                # Stop looping and return if the code executes successfully
+                # If no error from the script or our checks
                 print(colored(f"\n\nCode ran successfully. Refinement complete.", "green"))
-                #print(colored(f"Code Result:\n{result}", "green"))
-
-                #with open(self.log_file, "a", encoding="utf-8") as f:
-                    #f.write(f"\n\nCode Result:\n{result}")
                 return code, result
             else:
-                # Append feedback only on failure
+                # Append feedback on failure
                 error_msg = result
                 reminder_msg = f"Your code produced an error: {error_msg}.\nPlease fix the code."
-                msg = self.add_message("user", reminder_msg)
-                self.conversation.append(msg)
+                self.conversation.append(self.add_message("user", reminder_msg))
+
+                # Trim older conversation, preserving system prompt at index 0
+                while len(self.conversation) > 4:
+                    self.conversation.pop(1)
+
                 print(colored(f"Error feedback sent to LLM: {reminder_msg}", "yellow"))
 
         return None, "Could not produce a working solution in time."
-
