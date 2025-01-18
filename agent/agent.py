@@ -6,13 +6,13 @@ import tempfile
 import subprocess
 import sys
 from termcolor import colored
-from agent.prompts import SYSTEM_PROMPT
+from agent.prompts import SYSTEM_PROMPT, error_prompt
 
 class BugOutAgent:
     def __init__(self, llm_url, log_file):
         self.llm_url = llm_url
         self.conversation = []
-        self.max_iterations = 500
+        self.max_iterations = 5000
         self.log_file = log_file
         
         # Initial system message: instruct the LLM about its role.
@@ -169,13 +169,13 @@ class BugOutAgent:
             else:
                 # Append feedback on failure
                 error_msg = result
-                reminder_msg = f"Your code produced an error: {error_msg}.\nPlease fix the code."
-                self.conversation.append(self.add_message("user", reminder_msg))
+                debug_msg = error_prompt(error_msg)
+                self.conversation.append(self.add_message("user", debug_msg))
 
                 # Trim older conversation, preserving system prompt at index 0
-                while len(self.conversation) > 4:
+                while len(self.conversation) > 5:
                     self.conversation.pop(1)
 
-                print(colored(f"Error feedback sent to LLM: {reminder_msg}", "yellow"))
+                print(colored(f"===>Error feedback sent to LLM: {error_msg}", "red"))
 
         return None, "Could not produce a working solution in time."

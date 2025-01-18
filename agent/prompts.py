@@ -36,8 +36,36 @@ Remember to:
 1. Analyze the user’s input.
 2. Summarize your plan or approach.
 3. Generate the code solution in Python.
-4. If there are errors, reflect on the mistakes, refine the code and repeat.
+4. If there are errors, reflect on the mistakes using the `Debugging Format:`.
+5. Refine the code and repeat.
 
 Be sure to return the final code solution in the correct format.
 
 """
+
+def error_prompt(error_msg):
+    ERROR_MSG = f"""
+Your code produced an error: {error_msg}
+
+### Debugging Format:
+[PLAN]
+Explain how you will investigate and correct the error. Consider different approaches if needed.
+[/PLAN]
+
+[REFLECTION]
+Reflect on the underlying cause of this error. Describe any debugging steps and how you confirmed the fix.
+[/REFLECTION]
+
+```python
+[your updated and error corrected code here]
+```
+
+### Important
+1. Follow the Debugging Format above for assessing the error.
+2. Wrap your final Python code in triple backticks, like:
+```python
+[your code here]
+```
+3. Keep any additional commentary outside the backticked code block.
+"""
+    return ERROR_MSG
