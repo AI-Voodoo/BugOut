@@ -1,7 +1,7 @@
 # BugOut: Your AI-Powered Pythonic Coding Agent 🐞💻
 ![BugOut Logo](images/bugout.png)
 
-**BugOut** is a **proof-of-concept (PoC)** Python coding agent that demonstrates how you can build a local code-generation and execution agent from scratch. It leverages a locally running “DeepSeek Lite” API (`llm/deepseek_lite_api.py`) to generate code. The code is then automatically run and refined until it executes without errors, or until a set iteration limit is reached.
+**BugOut** is a fairly early **proof-of-concept (PoC)** Python coding agent that demonstrates how you can build a local code-generation and execution agent from scratch. It leverages a locally running “DeepSeek Lite” API (`llm/deepseek_lite_api.py`) to generate code. The code is then automatically run and refined until it executes without errors, or until a set iteration limit is reached.
 
 ## 
 
