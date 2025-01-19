@@ -88,8 +88,10 @@ class BugOutAgent:
 
         return final_text, None
     
-    def run_code(self, code):
-        """Executes code in a subprocess and returns (success, result)."""
+    def run_code(self, code, timeout=90):
+        """Executes code in a subprocess with a timeout and returns (success, result)."""
+        print(colored(f"\n\n===>Executing Code:\n\n", "cyan"))
+        
         # Create a temp .py file to run
         with tempfile.NamedTemporaryFile(mode='w', suffix=".py", delete=False) as tmp_file:
             script_path = tmp_file.name
@@ -103,7 +105,28 @@ class BugOutAgent:
                 stderr=subprocess.PIPE,
                 text=True
             )
-            stdout, stderr = proc.communicate()
+
+            try:
+                # Communicate with the subprocess with a timeout
+                stdout, stderr = proc.communicate(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                # Kill the process if time is up
+                proc.kill()
+                stdout, stderr = proc.communicate()
+                return_code = proc.returncode
+                
+                # Log and return an error message
+                with open(self.log_file, "a", encoding="utf-8") as f:
+                    f.write(f"\n\n=== Subprocess Execution (Timed Out) ===\n")
+                    f.write(f"Script: {script_path}\n")
+                    f.write(f"Timeout: {timeout} seconds\n")
+                    f.write(f"STDOUT:\n{stdout}\n")
+                    f.write(f"STDERR:\n{stderr}\n")
+
+                print(colored("\n\nError: Code execution timed out!", "red"))
+                return False, f"Execution timed out after {timeout} seconds."
+
+            # If we didn't timeout, proceed
             return_code = proc.returncode
 
             # Logging
@@ -114,7 +137,7 @@ class BugOutAgent:
                 f.write(f"STDOUT:\n{stdout}\n")
                 f.write(f"STDERR:\n{stderr}\n")
 
-            # Print to console as well
+            # Print to console
             if return_code == 0:
                 print(colored("\n\nGood Code Execution (no Python error)!", "green"))
                 print("STDOUT:", stdout)
@@ -130,27 +153,21 @@ class BugOutAgent:
                 # Non-zero exit => fail
                 return False, f"Script exited with code {return_code}\n\nSTDERR:\n{stderr}"
 
-            # (Optional) Add any further checks here
-            # e.g., "Did the code produce a certain file?" 
-            # If not, raise an error. For example:
-            # 
-            # if not os.path.exists("local_audit_report.json"):
-            #     return False, "No local_audit_report.json file was created."
-
-            # Return True with collected logs
+            # (Optional) Additional checks can go here
             return True, stdout
 
         except Exception as e:
-            # If we had a bigger-level error
+            # Big-level error in launching or handling the subprocess
             print(colored(f"\n\nError Encountered:\n{str(e)}", "red"))
             with open(self.log_file, "a", encoding="utf-8") as f:
                 f.write(f"\n\nError Encountered:\n{str(e)}\n")
             return False, str(e)
         finally:
-            # Cleanup in case something went wrong
+            # Cleanup if the file still exists
             if os.path.exists(script_path):
                 os.remove(script_path)
 
+    
     def generate_and_refine(self, user_request):
         """Main refinement loop."""
         self.conversation.append({"role": "user", "content": user_request})

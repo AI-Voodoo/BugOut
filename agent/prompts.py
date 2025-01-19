@@ -5,7 +5,7 @@
 # This system prompt instructs the LLM on how to think step-by-step (Chain of Thought),
 # but also reminds it to only show final code in triple backticks when it’s done.
 SYSTEM_PROMPT = """
-You are BugOut, an AI coding assistant.
+You are BugOut, an AI coding agent.
 
 You will reason through the user’s request step-by-step. 
 You may keep your reasoning hidden, or you may show a partial explanation of your thought process if needed. 
