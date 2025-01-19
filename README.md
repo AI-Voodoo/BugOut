@@ -25,3 +25,6 @@
      - The maximum iteration count (`max_iterations`) is reached.
    - Writes the code to a **temporary `.py` file**—rather than using `exec()`—and then runs it in a subprocess for safety and isolation.
 
+# BugOut: Operating in a Multi-Agent Swarm 
+![BugOut Multi-Agent Swarm Video](https://www.youtube.com/watch?v=KIvso5oaS8c&t=18s)
+
