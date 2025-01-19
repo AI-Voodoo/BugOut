@@ -26,5 +26,6 @@
    - Writes the code to a **temporary `.py` file**—rather than using `exec()`—and then runs it in a subprocess for safety and isolation.
 
 # BugOut: Operating in a Multi-Agent Swarm 
-![BugOut Multi-Agent Swarm Video](https://www.youtube.com/watch?v=KIvso5oaS8c&t=18s)
+[![Watch the video](https://www.youtube.com/watch?v=KIvso5oaS8c&t=18s)
+
 
