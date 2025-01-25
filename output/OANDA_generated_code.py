@@ -8,8 +8,8 @@ import joblib
 import os
 
 # Constants
-API_TOKEN = "7d6aebe7f36f3c0218dcf114c699f376-5c24095f0da4f93f35a4f02830c8ee99"
-ACCOUNT_ID = "101-002-14006337-001"
+API_TOKEN = ""
+ACCOUNT_ID = ""
 INSTRUMENT = "WTICO_USD"
 OUTPUT_PATH = "output/"
 
