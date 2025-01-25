@@ -8,62 +8,169 @@ import sys
 from termcolor import colored
 from agent.prompts import SYSTEM_PROMPT, error_prompt
 
+######################################################################
+# 1) HELPER: Extract lines around the error
+######################################################################
+def detect_error_lines(code_str, error_msg, context_radius=3):
+    """
+    Given the raw code string and an error message, attempt to find any line number
+    references in the error. For each line number found, capture a small snippet of code
+    (context_radius lines before and after).
+    
+    Returns a string with the relevant lines, or an empty string if none found.
+    """
+    # 1) Parse out line references from the error, e.g. "line 24"
+    #    We’ll do a simple search for the pattern 'line XX'
+    line_numbers = re.findall(r"line\s+(\d+)", error_msg)
+    if not line_numbers:
+        return ""  # no line info found
+
+    # We'll split the code by lines
+    lines = code_str.split("\n")
+    snippets = []
+
+    for ln_str in line_numbers:
+        try:
+            ln = int(ln_str)
+        except ValueError:
+            continue
+
+        # Python lines are typically 1-indexed in error messages
+        start_index = max(0, ln - 1 - context_radius)
+        end_index = min(len(lines), ln - 1 + context_radius + 1)
+
+        snippet_lines = lines[start_index:end_index]
+        # We'll annotate the snippet with line numbers
+        snippet_annotated = []
+        for i, line_text in enumerate(range(start_index, end_index)):
+            real_line_num = start_index + i + 1  # +1 if we want 1-based numbering
+            prefix = "==> " if real_line_num == ln else "    "
+            snippet_annotated.append(f"{prefix}{real_line_num}: {snippet_lines[i]}")
+
+        snippet_block = "\n".join(snippet_annotated)
+        snippets.append(f"Relevant code around line {ln}:\n{snippet_block}\n")
+
+    return "\n".join(snippets)
+
+
+######################################################################
+# 2) HELPER: Summarize the attempt with the LLM
+######################################################################
+def summarize_attempt_with_llm(llm_url, code, error_msg, iteration, token_limit=200):
+    """
+    Calls the LLM *again* to produce a short summary (~200 tokens) of:
+      - The code snippet
+      - The lines around the error, if any
+      - The error message
+    Then returns that short summary string.
+    
+    NOTE:
+      - This is an additional LLM call. Make sure you have the resources.
+      - token_limit is more of a guideline here; we rely on prompting the LLM 
+        to keep it short rather than a strict token counting method.
+    """
+
+    # 1) detect lines near error
+    relevant_snippet = detect_error_lines(code, error_msg)
+
+    # 2) Construct a minimal prompt
+    #    We'll ask the LLM: "Please summarize code + error in ~200 tokens"
+    system_instruction = {
+        "role": "system",
+        "content": (
+            "You are a helpful assistant that summarizes code in MAX 3 sentences or fewer. "
+            "Include the key functionality only and the error to provide context."
+        )
+    }
+
+    user_input = {
+        "role": "user",
+        "content": (
+            f"This is attempt #{iteration}. Please summarize:\n\n"
+            f"--- CODE ---\n{code}\n\n"
+            f"--- RELEVANT SNIPPET ---\n{relevant_snippet}\n\n"
+            f"--- ERROR ---\n{error_msg}\n\n"
+            f"Please keep it under ~{token_limit} tokens."
+        )
+    }
+
+    conversation = [system_instruction, user_input]
+
+    # 3) Call the LLM
+    headers = {"Content-Type": "application/json"}
+    data = {"messages": conversation}
+
+    try:
+        resp = requests.post(llm_url, headers=headers, data=json.dumps(data))
+        resp.raise_for_status()
+        summary_text = resp.text.strip()
+    except Exception as e:
+        # If we fail for any reason, fallback to a minimal summary
+        fallback_summary = (
+            f"Attempt #{iteration} - Summarizer call failed. Error excerpt: {error_msg[:100]}"
+        )
+        return fallback_summary
+
+    # 4) That response might be raw JSON or just text, depending on your LLM endpoint.
+    #    If needed, parse it. We assume it's plain text:
+    return f"[SUMMARY OF ATTEMPT #{iteration}]\n{summary_text}\n"
+
+
 class BugOutAgent:
     def __init__(self, llm_url, log_file):
         self.llm_url = llm_url
-        self.conversation = []
-        self.max_iterations = 5000
         self.log_file = log_file
         
-        # Initial system message: instruct the LLM about its role.
+        self.conversation = []
+        self.max_iterations = 50
+        
+        # The initial system message
         system_msg = {
             "role": "system",
             "content": SYSTEM_PROMPT
         }
         self.conversation.append(system_msg)
 
-    def add_message(self, role, input):
-        return {
-            "role": role,
-            "content": input
-        }
+        # We'll store the user request once we receive it
+        self.user_request_msg = None
+        # We'll store the summarization from each attempt so far
+        self.attempts_summary = ""
+        # Track last code to detect repeated solutions
+        self.last_code = None
+
+    def add_message(self, role, input_text):
+        return {"role": role, "content": input_text}
 
     def call_llm(self):
         """
-        Sends conversation to the LLM API and reads
-        the response in streaming chunks.
+        Sends self.conversation to the LLM API (the main loop usage) and returns (final_text, code).
         """
         headers = {"Content-Type": "application/json"}
         code_marker = "```python"
         final_text = ""
 
+        # We'll do a loop to keep asking the LLM if it forgot code fences:
         while code_marker not in final_text:
             data = {"messages": self.conversation}
 
-            # Logging
+            # Log the conversation
             with open(self.log_file, "a", encoding="utf-8") as f:
                 f.write(f"\n\nConversation:\n{self.conversation}")
 
-            # Use stream=True for chunked response
             try:
                 with requests.post(self.llm_url, headers=headers, data=json.dumps(data), stream=True) as r:
                     r.raise_for_status()
-                    # Read the chunks as they arrive
                     chunk_texts = []
                     for chunk in r.iter_content(chunk_size=None):
-                        # Decode chunk
                         token_str = chunk.decode("utf-8")
-                        # Print partial tokens to console
                         print(colored(token_str, "yellow"), end="", flush=True)
                         chunk_texts.append(token_str)
-
                     final_text = "".join(chunk_texts)
 
-                # Now we have the full text for this iteration
                 msg = self.add_message("assistant", final_text)
                 self.conversation.append(msg)
 
-                # Log the raw response
+                # Log raw
                 with open(self.log_file, "a", encoding="utf-8") as f:
                     f.write(f"\n\nLLM RAW Response:\n{final_text}")
 
@@ -71,12 +178,20 @@ class BugOutAgent:
                 print(colored(f"\n\nError during LLM API call:\n{str(e)}", "red"))
                 return None, None
 
-            # Extract Python code if present
-            code_match = re.search(r'```python(.*?)```', final_text, re.DOTALL)
-            if code_match:
-                code = code_match.group(1).strip()
+            # Extract code block
+            code_blocks = re.findall(r'```python(.*?)```', final_text, re.DOTALL)
+            if code_blocks:
+                if len(code_blocks) == 1:
+                    print("\n\nSingle code block found")
+                    code = code_blocks[0].strip()
+                else:
+                    print("\n\nMultiple code blocks found")
+                    code = "\n\n".join(block.strip() for block in code_blocks)
+
+                # Log code
                 with open(self.log_file, "a", encoding="utf-8") as f:
                     f.write(f"\n\nCode Generated:\n{code}")
+
                 return final_text, code
 
             # If no code found, ask again
@@ -89,33 +204,27 @@ class BugOutAgent:
         return final_text, None
     
     def run_code(self, code, timeout=90):
-        """Executes code in a subprocess with a timeout and returns (success, result)."""
+        """Executes code in a subprocess and returns (success, result)."""
         print(colored(f"\n\n===>Executing Code:\n\n", "cyan"))
         
-        # Create a temp .py file to run
         with tempfile.NamedTemporaryFile(mode='w', suffix=".py", delete=False) as tmp_file:
             script_path = tmp_file.name
             tmp_file.write(code)
 
         try:
-            # Run the code in a new Python subprocess
             proc = subprocess.Popen(
                 [sys.executable, script_path],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True
             )
-
             try:
-                # Communicate with the subprocess with a timeout
                 stdout, stderr = proc.communicate(timeout=timeout)
             except subprocess.TimeoutExpired:
-                # Kill the process if time is up
                 proc.kill()
                 stdout, stderr = proc.communicate()
                 return_code = proc.returncode
-                
-                # Log and return an error message
+
                 with open(self.log_file, "a", encoding="utf-8") as f:
                     f.write(f"\n\n=== Subprocess Execution (Timed Out) ===\n")
                     f.write(f"Script: {script_path}\n")
@@ -126,10 +235,7 @@ class BugOutAgent:
                 print(colored("\n\nError: Code execution timed out!", "red"))
                 return False, f"Execution timed out after {timeout} seconds."
 
-            # If we didn't timeout, proceed
             return_code = proc.returncode
-
-            # Logging
             with open(self.log_file, "a", encoding="utf-8") as f:
                 f.write(f"\n\n=== Subprocess Execution ===\n")
                 f.write(f"Script: {script_path}\n")
@@ -137,7 +243,6 @@ class BugOutAgent:
                 f.write(f"STDOUT:\n{stdout}\n")
                 f.write(f"STDERR:\n{stderr}\n")
 
-            # Print to console
             if return_code == 0:
                 print(colored("\n\nGood Code Execution (no Python error)!", "green"))
                 print("STDOUT:", stdout)
@@ -145,54 +250,83 @@ class BugOutAgent:
                 print(colored("\n\nError Encountered (subprocess non-zero exit)!", "red"))
                 print("STDERR:", stderr)
 
-            # Remove the temp file
             os.remove(script_path)
 
-            # Decide success/failure
             if return_code != 0:
-                # Non-zero exit => fail
                 return False, f"Script exited with code {return_code}\n\nSTDERR:\n{stderr}"
 
-            # (Optional) Additional checks can go here
             return True, stdout
 
         except Exception as e:
-            # Big-level error in launching or handling the subprocess
             print(colored(f"\n\nError Encountered:\n{str(e)}", "red"))
             with open(self.log_file, "a", encoding="utf-8") as f:
                 f.write(f"\n\nError Encountered:\n{str(e)}\n")
             return False, str(e)
         finally:
-            # Cleanup if the file still exists
             if os.path.exists(script_path):
                 os.remove(script_path)
 
-    
     def generate_and_refine(self, user_request):
-        """Main refinement loop."""
-        self.conversation.append({"role": "user", "content": user_request})
+        """
+        Main refinement loop with:
+          - Additional LLM-based summarization (200 tokens) of code and error.
+          - Excerpting lines near the error.
+        """
+        # 1) Store the original user request
+        self.user_request_msg = {"role": "user", "content": user_request}
+        self.conversation.append(self.user_request_msg)
 
-        for iteration in range(self.max_iterations):
-            # 1. Generate code
+        for iteration in range(1, self.max_iterations + 1):
+            # === 1) Ask the LLM for code ===
             _, code = self.call_llm()
+            if not code:
+                # We didn't get code; keep looping
+                continue
 
-            # 2. Execute the code
+            # Optional: Check repeated code
+            if self.last_code is not None and code.strip() == self.last_code.strip():
+                self.conversation.append(
+                    self.add_message("user", "This code is identical to the previous attempt. Please try a new approach.")
+                )
+                continue
+            self.last_code = code
+
+            # === 2) Run the code in a subprocess ===
             success, result = self.run_code(code)
-
             if success:
-                # If no error from the script or our checks
                 print(colored(f"\n\nCode ran successfully. Refinement complete.", "green"))
                 return code, result
             else:
-                # Append feedback on failure
-                error_msg = result
-                debug_msg = error_prompt(error_msg)
-                self.conversation.append(self.add_message("user", debug_msg))
+                # === 3) Summarize the error + code using the LLM-based approach
+                iteration_summary = summarize_attempt_with_llm(
+                    llm_url=self.llm_url,
+                    code=code,
+                    error_msg=result,
+                    iteration=iteration,
+                    token_limit=200
+                )
+                self.attempts_summary += iteration_summary + "\n"
 
-                # Trim older conversation, preserving system prompt at index 0
-                while len(self.conversation) > 5:
-                    self.conversation.pop(1)
+                # === 4) Create the debug prompt
+                debug_msg = error_prompt(result)
 
-                print(colored(f"===>Error feedback sent to LLM: {error_msg}", "red"))
+                # === 5) Rebuild conversation to stay small:
+                system_msg = self.conversation[0]  # system prompt
+                user_req = self.conversation[1]    # original user request
+                summary_msg = self.add_message(
+                    "user",
+                    f"Here is a summary of all attempts so far:\n{self.attempts_summary}"
+                )
+                debug_msg_struct = self.add_message("user", debug_msg)
 
+                self.conversation = [
+                    system_msg,
+                    user_req,
+                    summary_msg,
+                    debug_msg_struct
+                ]
+
+                print(colored(f"===>Error feedback sent to LLM. Iteration {iteration}", "red"))
+
+        # If we exhaust max_iterations
         return None, "Could not produce a working solution in time."

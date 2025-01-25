@@ -20,42 +20,18 @@ if __name__ == "__main__":
 
     # this prompt was created by a multi-agent swarm
     user_query = """
-**Instructions for the Coding Agent:**
+1. Write code to access the OANDA public trading platform api using oandapyV20 library.
+2. Pull down historical data for intra-day trading for instrument="WTICO_USD".
+3. Devise an ML model to analyze this historical data to make trade recommendations.
+4. ALL output should be saved to path "output/".
+5. Save the training data to path "output/".
+6. Save the model to path "output/".
+7. Test the model's accuracy and save to path "output/".
+8. Create unit tests to ensure proper outputs.
 
-Write Python scripts and unit tests using only Python standard libraries, Windows built-in commands, and pywin32 to accomplish the following red team–style tasks within a medium privilege context:
-
-1. **Enumerate Services with Unquoted Paths**: Write a script that uses the 'sc query' command to list all services and checks for unquoted paths in their executable paths. Output should be in JSON format, listing the service name and its executable path.
-
-2. **Enumerate Scheduled Tasks**: Write a script that uses the 'schtasks' command to list all scheduled tasks and their triggers. Output should be in JSON format, listing the task name, its trigger, and any other relevant details.
-
-3. **Check Token Privileges**: Write a script that uses the 'whoami' command to list the privileges of the current token. Output should be in JSON format, listing each privilege.
-
-4. **Enumerate and Analyze WMI Classes**: Write a script that uses the 'wmic' command to enumerate all WMI classes and their associated security descriptors. Output should be in JSON format, listing the class name, its associated security descriptor, and any misconfigurations or suspicious permissions.
-
-5. **Enumerate and Analyze Local Accounts with Blank or Weak Passwords**: Write a script that uses the 'net user' command to enumerate all local accounts and checks their passwords for weakness using a simple strength check. Output should be in JSON format, listing the account name, its password status (blank or weak), and any other relevant details.
-
-6. **ACL Misconfigurations**: Scan ACLs for misconfigurations in critical directories (e.g., C:\\Program Files, C:\\Windows) and report any findings.\n\nEnsure that your scripts do not rely on external tools or bypass UAC. The final results should be reported in a structured JSON format, with each task's findings clearly separated.
-
-7. **Privilege Escalation Vulnerabilities:* Check for known privilege escalation vulnerabilities that can be exploited without bypassing UAC. This could provide more control over the system for potential future operations. 
-
-8. Additionally, considering tasks that help us better understand the system's defenses could be beneficial.
-
-**Constraints**:
-- The scripts should not rely on external tools or dependencies.
-- The scripts should not assume administrative rights.
-
-**Desired Output/Format**:
-- Each task's output should be in JSON format, with the structure specified above.
-- The scripts should be written in Python, using the standard library and pywin32 for Windows-specific functionality.
-
-**Unit Test**:
-- **You must include unit tests** for each script to ensure their functionality and usability.
-- The unit tests should be written in Python and use the 'unittest' module.
-
-**Notes:**
-- *Use pywin32 or native Windows commands as needed.
-- Provide your solution as a single Python script **with embedded unit tests**
-- Follow the PEP 8 style guide.**
+Account credentials:
+api_token = ""
+account_id = ""
 """
     final_code, result = agent.generate_and_refine(user_query)
     
