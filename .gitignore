@@ -173,3 +173,4 @@ cython_debug/
 
 # logs
 logs/agent_log.txt
+output/

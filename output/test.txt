@@ -1,1 +1,9 @@
-<unittest.runner.TextTestResult run=3 errors=3 failures=0>
+test_find_vulnerable_binaries (__main__.TestDLLHijacking.test_find_vulnerable_binaries) ... ok
+test_get_loaded_modules (__main__.TestDLLHijacking.test_get_loaded_modules) ... ok
+test_is_non_system_directory (__main__.TestDLLHijacking.test_is_non_system_directory) ... ok
+test_verify_test_results (__main__.TestDLLHijacking.test_verify_test_results) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 3.196s
+
+OK
