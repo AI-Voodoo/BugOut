@@ -361,6 +361,12 @@ class BugOutAgent:
             # 2) Run the code in a subprocess
             success, result = self.run_code(code)
             if success:
+                print("\n\n=== Saving Generated Code Before Test Result Analysis ===\n\n")
+                generated_code_iteration_path = self.code_out = f"output/generated_code_iteration-{iteration}.py"
+                # Write the iteration code to your specified output file
+                with open(generated_code_iteration_path, "w", encoding="utf-8") as f:
+                    f.write(generated_code_iteration_path)
+
                 # === Final Check: Verify unit test results ===
                 final_ok, final_message = self.final_check_unit_tests()
                 if final_ok:

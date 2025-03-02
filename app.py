@@ -21,8 +21,15 @@ if __name__ == "__main__":
 
     # this prompt was created by a multi-agent swarm
     user_query = """
-- write python code to find which binaries on the windows system may be suseptible to dll hijacking.
-"""
+    Write a Python script that identifies Windows binaries that may be susceptible to DLL hijacking. Your solution should:
+
+    - Identify modules that are loaded from non-standard directories (i.e., outside %WINDIR% and %WINDIR%\\System32).
+    - Detect usage of dynamic DLL loading functions (such as LoadLibrary or LoadLibraryEx) that use relative paths or unsanitized inputs.
+    - Validate the digital signatures and file permissions of loaded DLLs to assess if they are potentially tamperable.
+    - Check for environment variable manipulations (like PATH modifications) that might influence DLL search paths.
+    
+    """
+
     final_code, result = agent.generate_and_refine(user_query)
     
     if final_code:

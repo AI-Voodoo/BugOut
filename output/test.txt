@@ -1,9 +1,18 @@
-test_find_vulnerable_binaries (__main__.TestDLLHijacking.test_find_vulnerable_binaries) ... ok
-test_get_loaded_modules (__main__.TestDLLHijacking.test_get_loaded_modules) ... ok
-test_is_non_system_directory (__main__.TestDLLHijacking.test_is_non_system_directory) ... ok
-test_verify_test_results (__main__.TestDLLHijacking.test_verify_test_results) ... ok
+test_check_environment_variables (__main__.TestDLLHijackingDetection.test_check_environment_variables) ... ok
+test_check_file_permissions (__main__.TestDLLHijackingDetection.test_check_file_permissions) ... ok
+test_get_loaded_modules (__main__.TestDLLHijackingDetection.test_get_loaded_modules) ... ok
+test_is_standard_path (__main__.TestDLLHijackingDetection.test_is_standard_path) ... ok
+test_validate_signature (__main__.TestDLLHijackingDetection.test_validate_signature) ... FAIL
+
+======================================================================
+FAIL: test_validate_signature (__main__.TestDLLHijackingDetection.test_validate_signature)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "c:\Users\mrunh\source\repos\BugOut\output\generated_code.py", line 169, in test_validate_signature
+    self.assertTrue(validate_signature(os.path.join(os.environ['WINDIR'], 'System32', 'kernel32.dll')))
+AssertionError: False is not true
 
 ----------------------------------------------------------------------
-Ran 4 tests in 3.196s
+Ran 5 tests in 0.002s
 
-OK
+FAILED (failures=1)
