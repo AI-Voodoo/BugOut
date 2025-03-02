@@ -15,23 +15,13 @@ if __name__ == "__main__":
     log_file = "logs/agent_log.txt"
     code_out = "output/generated_code.py"
     delete_file(log_file)
+    delete_file("output/test.txt")
 
     agent = BugOutAgent("http://127.0.0.1:5000/generate", log_file)
 
     # this prompt was created by a multi-agent swarm
     user_query = """
-1. Write code to access the OANDA public trading platform api using oandapyV20 library.
-2. Pull down historical data for intra-day trading for instrument="WTICO_USD".
-3. Devise an ML model to analyze this historical data to make trade recommendations.
-4. ALL output should be saved to path "output/".
-5. Save the training data to path "output/".
-6. Save the model to path "output/".
-7. Test the model's accuracy and save to path "output/".
-8. Create unit tests to ensure proper outputs.
-
-Account credentials:
-api_token = ""
-account_id = ""
+- write python code to find which binaries on the windows system may be suseptible to dll hijacking.
 """
     final_code, result = agent.generate_and_refine(user_query)
     
