@@ -1,18 +1,20 @@
-test_check_environment_variables (__main__.TestDLLHijackingDetection.test_check_environment_variables) ... ok
-test_check_file_permissions (__main__.TestDLLHijackingDetection.test_check_file_permissions) ... ok
-test_get_loaded_modules (__main__.TestDLLHijackingDetection.test_get_loaded_modules) ... ok
-test_is_standard_path (__main__.TestDLLHijackingDetection.test_is_standard_path) ... ok
-test_validate_signature (__main__.TestDLLHijackingDetection.test_validate_signature) ... FAIL
+test_check_environment_variables (__main__.TestDLLHijackingAnalyzer.test_check_environment_variables) ... ok
+test_check_file_permissions (__main__.TestDLLHijackingAnalyzer.test_check_file_permissions) ... ok
+test_does_dll_exist (__main__.TestDLLHijackingAnalyzer.test_does_dll_exist) ... ok
+test_get_loaded_modules (__main__.TestDLLHijackingAnalyzer.test_get_loaded_modules) ... ERROR
 
 ======================================================================
-FAIL: test_validate_signature (__main__.TestDLLHijackingDetection.test_validate_signature)
+ERROR: test_get_loaded_modules (__main__.TestDLLHijackingAnalyzer.test_get_loaded_modules)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "c:\Users\mrunh\source\repos\BugOut\output\generated_code.py", line 169, in test_validate_signature
-    self.assertTrue(validate_signature(os.path.join(os.environ['WINDIR'], 'System32', 'kernel32.dll')))
-AssertionError: False is not true
+  File "C:\Users\mrunh\AppData\Local\Temp\tmpoz0wkt1h.py", line 151, in test_get_loaded_modules
+    modules = get_loaded_modules(pid)
+              ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mrunh\AppData\Local\Temp\tmpoz0wkt1h.py", line 42, in get_loaded_modules
+    ctypes.windll.psapi.GetModuleBaseNameW(h_process, h_modules[i], mod_name, MAX_PATH)
+ctypes.ArgumentError: argument 2: OverflowError: int too long to convert
 
 ----------------------------------------------------------------------
-Ran 5 tests in 0.002s
+Ran 4 tests in 0.002s
 
-FAILED (failures=1)
+FAILED (errors=1)

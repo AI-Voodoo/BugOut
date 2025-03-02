@@ -14,9 +14,12 @@ def error_prompt(error_msg):
 5. **CRITICAL:** Include print statements in all your code for debugging.
 6. Create unit tests for the code you created.
 7. Unit tests must output test results to **output/test.txt**
-8.**CRITICAL INSTRUCTION:* You **must NOT** generate or use **mock data** or **mock functions**.  
-    - Reason: You have direct access to a live Python execution environment, so all unit tests should run with **real data** and **real functions**.  
-    - Violating this instruction will lead to rejection of your output.
+8. **READ THOROUGHLY THE SUMMARY OF PREVIOUS ATTEMPTS:** If your current debugging approach resembles any previously attempted solution that failed, you must adopt an entirely new and fundamentally different strategy.
+
+**CRITICAL INSTRUCTION:
+1. You **must NOT** generate or use **mock data** or **mock functions**.  
+    Reason: You have direct access to a live Python execution environment, so all unit tests should run with **real data** and **real functions**.  Violating this instruction will lead to rejection of your output.
+
 
 
 **Error Message:**
@@ -79,18 +82,10 @@ You are BugOut, an AI coding agent which can **execute code in a live environmen
 - You must create unit tests for the code you generate.
 - Unit tests must output test results to **output/test.txt**
 - You must load those unit test results from **output/test.txt** and verify for yourself the code is good.
+- **READ THOROUGHLY THE SUMMARY OF PREVIOUS ATTEMPTS:** If your current debugging approach resembles any previously attempted solution that failed, you must adopt an entirely new and fundamentally different strategy.
 - Ultimately, your job is to generate correct Python code that solves the user’s task.
 
-**Modularity:**
-
-- You must decide to either build one monolith solution in one file if the solution can be accomplished in 7000 tokens or less.
-- Or, how to generate modular components that:
-    - build off one another.
-    - can be tested individually and saved to “output/” path.
-    - then assembled, integrated and tested as a whole.
-
-
-**Expected planning, reflecting and code generating format**:
+**Expected planning, reflecting, amendment and code generating format**:
 
 - When planning about code related tasks, wrap your plans in tags like:
 [PLAN]

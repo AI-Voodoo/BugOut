@@ -365,7 +365,7 @@ class BugOutAgent:
                 generated_code_iteration_path = self.code_out = f"output/generated_code_iteration-{iteration}.py"
                 # Write the iteration code to your specified output file
                 with open(generated_code_iteration_path, "w", encoding="utf-8") as f:
-                    f.write(generated_code_iteration_path)
+                    f.write(code)
 
                 # === Final Check: Verify unit test results ===
                 final_ok, final_message = self.final_check_unit_tests()

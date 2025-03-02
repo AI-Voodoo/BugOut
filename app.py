@@ -21,12 +21,14 @@ if __name__ == "__main__":
 
     # this prompt was created by a multi-agent swarm
     user_query = """
-    Write a Python script that identifies Windows binaries that may be susceptible to DLL hijacking. Your solution should:
+    Write a Python script that identifies Windows binaries that may be susceptible to DLL hijacking. Your solution should use techniques like:
 
-    - Identify modules that are loaded from non-standard directories (i.e., outside %WINDIR% and %WINDIR%\\System32).
-    - Detect usage of dynamic DLL loading functions (such as LoadLibrary or LoadLibraryEx) that use relative paths or unsanitized inputs.
+    - Identify modules that are loaded from non-standard directories.
+    - Modules calling non-existent DLLs.
     - Validate the digital signatures and file permissions of loaded DLLs to assess if they are potentially tamperable.
     - Check for environment variable manipulations (like PATH modifications) that might influence DLL search paths.
+    
+    - Think about how to eliminate false positives.
     
     """
 
