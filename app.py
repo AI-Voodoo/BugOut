@@ -19,17 +19,14 @@ if __name__ == "__main__":
 
     agent = BugOutAgent("http://127.0.0.1:5000/generate", log_file)
 
-    # this prompt was created by a multi-agent swarm
     user_query = """
     Write a Python script that identifies Windows binaries that may be susceptible to DLL hijacking. Your solution should use techniques like:
-
+    - Ensure to do a system-wide audit - not just the current process.
     - Identify modules that are loaded from non-standard directories.
-    - Modules calling non-existent DLLs.
-    - Validate the digital signatures and file permissions of loaded DLLs to assess if they are potentially tamperable.
-    - Check for environment variable manipulations (like PATH modifications) that might influence DLL search paths.
-    
-    - Think about how to eliminate false positives.
-    
+    - Look for modules calling non-existent DLLs.
+    - Robustly validate the digital signatures and file permissions if they are potentially tamperable.
+    - Privilege-aware checks for file security descriptors
+    - Add any further checks you deem relivent.
     """
 
     final_code, result = agent.generate_and_refine(user_query)
